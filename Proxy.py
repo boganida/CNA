@@ -121,7 +121,7 @@ while True:
     max_age = int(cache_control_match.group(1)) if cache_control_match else None
     modified_time = os.path.getmtime(cacheLocation)       # Effective time
     age = time.time() - modified_time
-    print(f"CacheFile_age: {int(age)} seconds")
+    print(f"CacheFileAge: {int(age)} seconds")
     if age >= max_age:
       print("Cache expired!")
       raise Exception("Cache expired error")
@@ -135,9 +135,10 @@ while True:
     # ~~~~ END CODE INSERT ~~~~
     cacheFile.close()
     print ('Sent to the client:')
-    print ('> ' + cacheData)
+    print ('> ' + cache_str)
   except:
     # cache miss.  Get resource from origin server
+    print('Cache miss!')
     originServerSocket = None
     # Create a socket to connect to origin server
     # and store in originServerSocket
@@ -194,13 +195,15 @@ while True:
 
       # Determine cache
       response_s = originServerResponse.decode('ISO-8859-1')
-      no_store = re.search(r'Cache-Control:\s*no-store', response_s, re.IGNORECASE)
+      not_store = re.search(r'Cache-Control:\s*no-store', response_s, re.IGNORECASE)
 
-      go_cache = True
-      if no_store:
-        go_cache = False
+      cache_g = True
+      if not_store:
+        cache_g = False
+        print("Not_Store! Unable to cache.")
 
-      if go_cache:
+      if cache_g:
+        print("Cache incoming!")
         # Create a new file in the cache for the requested file.
         cacheDir, file = os.path.split(cacheLocation)
         print ('cached directory ' + cacheDir)
