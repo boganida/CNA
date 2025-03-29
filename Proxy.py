@@ -113,6 +113,17 @@ while True:
     # Check wether the file is currently in the cache
     cacheFile = open(cacheLocation, "r")
     cacheData = cacheFile.readlines()
+    cache_str = ''.join(cacheData)
+
+    # Check if expired(301,302,404)
+    cache_control_match = re.search(r'Cache-Control:.*?max-age=(\d+)', cache_str, re.IGNORECASE)
+    max_age = int(cache_control_match.group(1)) if cache_control_match else None
+    modified_time = os.path.getmtime(cacheLocation)       # Effective time
+    age = time.time() - modified_time
+    print(f"CacheFile_age: {int(age)} seconds")
+    if age >= max_age:
+      print("Cache expired!")
+      raise Exception("Cache expired error")
 
     print ('Cache hit! Loading from cache file: ' + cacheLocation)
     # ProxyServer finds a cache hit
@@ -180,19 +191,29 @@ while True:
       clientSocket.sendall(originServerResponse)
       # ~~~~ END CODE INSERT ~~~~
 
-      # Create a new file in the cache for the requested file.
-      cacheDir, file = os.path.split(cacheLocation)
-      print ('cached directory ' + cacheDir)
-      if not os.path.exists(cacheDir):
-        os.makedirs(cacheDir)
-      cacheFile = open(cacheLocation, 'wb')
+      # Determine cache
+      response_s = originServerResponse.decode('ISO-8859-1')
+      no_store = re.search(r'Cache-Control:\s*no-store', response_s, re.IGNORECASE)
 
-      # Save origin server response in the cache file
-      # ~~~~ INSERT CODE ~~~~
-      cacheFile.write(originServerResponse)######################## 12
-      # ~~~~ END CODE INSERT ~~~~
-      cacheFile.close()
-      print ('cache file closed')
+      go_cache = True
+      if no_store:
+        go_cache = False
+
+      if go_cache:
+
+        # Create a new file in the cache for the requested file.
+        cacheDir, file = os.path.split(cacheLocation)
+        print ('cached directory ' + cacheDir)
+        if not os.path.exists(cacheDir):
+          os.makedirs(cacheDir)
+        cacheFile = open(cacheLocation, 'wb')
+
+        # Save origin server response in the cache file
+        # ~~~~ INSERT CODE ~~~~
+        cacheFile.write(originServerResponse)######################## 12
+        # ~~~~ END CODE INSERT ~~~~
+        cacheFile.close()
+        print ('cache file closed')
 
       # finished communicating with origin server - shutdown socket writes
       print ('origin response received. Closing sockets')
